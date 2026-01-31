@@ -1,0 +1,877 @@
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600&family=Playfair+Display:ital,wght@0,400;0,500;0,600;0,700;1,400;1,500&display=swap');
+@import "tailwindcss";
+
+/* ========================================
+   I-CATCHING DESIGN SYSTEM
+   Editorial, dark, luxury atelier aesthetic
+   ======================================== */
+
+/* Custom Theme Variables */
+@theme {
+  /* Color Palette */
+  --color-anthracite: oklch(0.15 0.005 270);
+  --color-charcoal: oklch(0.20 0.005 270);
+  --color-slate-dark: oklch(0.25 0.005 270);
+  --color-slate-medium: oklch(0.35 0.01 270);
+  --color-slate-light: oklch(0.55 0.01 270);
+
+  /* Accent Colors */
+  --color-gold: oklch(0.75 0.12 75);
+  --color-gold-muted: oklch(0.65 0.08 75);
+  --color-bordeaux: oklch(0.40 0.15 15);
+  --color-bordeaux-deep: oklch(0.30 0.12 15);
+  --color-petrol: oklch(0.45 0.10 220);
+  --color-petrol-dark: oklch(0.35 0.08 220);
+
+  /* Neutral Tones */
+  --color-cream: oklch(0.95 0.01 90);
+  --color-cream-warm: oklch(0.90 0.015 85);
+  --color-parchment: oklch(0.85 0.02 80);
+
+  /* Semantic Colors */
+  --color-primary: var(--color-gold);
+  --color-secondary: var(--color-bordeaux);
+  --color-accent: var(--color-petrol);
+  --color-background: var(--color-anthracite);
+  --color-surface: var(--color-charcoal);
+  --color-surface-elevated: var(--color-slate-dark);
+
+  /* Typography */
+  --font-serif: 'Playfair Display', 'Georgia', serif;
+  --font-sans: 'Inter', 'system-ui', sans-serif;
+  --font-display: 'Playfair Display', serif;
+
+  /* Spacing */
+  --spacing-section: 8rem;
+  --spacing-section-mobile: 4rem;
+
+  /* Transitions */
+  --transition-smooth: 400ms cubic-bezier(0.16, 1, 0.3, 1);
+  --transition-fast: 200ms cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+/* Base Styles */
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  @apply bg-anthracite text-cream antialiased;
+  font-family: var(--font-sans);
+  font-size: 16px;
+  line-height: 1.7;
+}
+
+/* Typography Hierarchy */
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
+  font-family: var(--font-serif);
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: -0.02em;
+}
+
+h1 {
+  @apply text-4xl md:text-5xl lg:text-6xl;
+}
+
+h2 {
+  @apply text-3xl md:text-4xl lg:text-5xl;
+}
+
+h3 {
+  @apply text-2xl md:text-3xl;
+}
+
+h4 {
+  @apply text-xl md:text-2xl;
+}
+
+h5 {
+  @apply text-lg md:text-xl;
+}
+
+h6 {
+  @apply text-base md:text-lg;
+}
+
+/* Editorial Paragraph & Blog Content */
+.prose-editorial {
+  @apply text-cream-warm leading-relaxed;
+  font-size: 1.125rem;
+  max-width: 65ch;
+}
+
+.prose-editorial h2 {
+  @apply text-2xl md:text-3xl font-serif text-cream mt-12 mb-6;
+}
+
+.prose-editorial h3 {
+  @apply text-xl md:text-2xl font-serif text-cream mt-8 mb-4;
+}
+
+.prose-editorial h4 {
+  @apply text-lg md:text-xl font-serif text-cream mt-6 mb-3;
+}
+
+.prose-editorial p {
+  @apply mb-6;
+}
+
+.prose-editorial ul,
+.prose-editorial ol {
+  @apply mb-6 pl-6;
+}
+
+.prose-editorial ul {
+  list-style-type: disc;
+}
+
+.prose-editorial ol {
+  list-style-type: decimal;
+}
+
+.prose-editorial li {
+  @apply mb-2;
+}
+
+.prose-editorial li::marker {
+  @apply text-gold;
+}
+
+.prose-editorial blockquote {
+  @apply border-l-2 border-gold pl-6 my-8 italic text-cream;
+  font-size: 1.25rem;
+}
+
+.prose-editorial strong {
+  @apply text-cream font-medium;
+}
+
+.prose-editorial em {
+  @apply italic;
+}
+
+.prose-editorial a {
+  @apply text-gold underline underline-offset-4 hover:text-gold-muted;
+}
+
+.prose-editorial img {
+  @apply rounded-sm my-8 w-full;
+}
+
+.prose-editorial hr {
+  @apply border-slate-medium my-12;
+}
+
+/* Links - Understated */
+a {
+  @apply text-gold-muted transition-colors duration-300;
+  text-decoration: none;
+}
+
+a:hover {
+  @apply text-gold;
+}
+
+/* Button Base */
+.btn {
+  @apply inline-flex items-center justify-center px-6 py-3 text-sm font-medium tracking-wide transition-all duration-300 cursor-pointer;
+  font-family: var(--font-sans);
+}
+
+.btn-primary {
+  @apply bg-gold text-anthracite hover:bg-gold-muted;
+}
+
+.btn-secondary {
+  @apply border border-gold-muted text-gold-muted hover:border-gold hover:text-gold bg-transparent;
+}
+
+.btn-ghost {
+  @apply text-cream-warm hover:text-gold bg-transparent;
+}
+
+/* Section Styling */
+.section {
+  @apply py-16 md:py-24 lg:py-32;
+}
+
+.section-title {
+  @apply text-gold-muted text-sm uppercase tracking-[0.2em] mb-4;
+  font-family: var(--font-sans);
+  font-weight: 500;
+}
+
+/* Card Styling */
+.card {
+  @apply bg-surface rounded-sm overflow-hidden transition-all duration-500;
+}
+
+.card:hover {
+  @apply bg-surface-elevated;
+}
+
+/* Input Styling */
+.input {
+  @apply w-full px-4 py-3 bg-charcoal border border-slate-medium text-cream placeholder:text-slate-light focus:border-gold focus:outline-none transition-colors duration-300 rounded-sm;
+}
+
+.input:focus {
+  @apply ring-1 ring-gold/30;
+}
+
+/* Textarea */
+textarea.input {
+  @apply resize-none min-h-[120px];
+}
+
+/* Label */
+.label {
+  @apply block text-sm text-cream-warm mb-2 font-medium;
+}
+
+/* Form Group */
+.form-group {
+  @apply mb-6;
+}
+
+/* Selection */
+::selection {
+  @apply bg-gold/30 text-cream;
+}
+
+/* Scrollbar */
+::-webkit-scrollbar {
+  width: 8px;
+  height: 8px;
+}
+
+::-webkit-scrollbar-track {
+  @apply bg-anthracite;
+}
+
+::-webkit-scrollbar-thumb {
+  @apply bg-slate-medium rounded-full;
+}
+
+::-webkit-scrollbar-thumb:hover {
+  @apply bg-slate-light;
+}
+
+/* Image Container */
+.img-cover {
+  @apply w-full h-full object-cover;
+}
+
+/* Overlay Gradient */
+.overlay-gradient {
+  background: linear-gradient(to bottom,
+      transparent 0%,
+      rgba(20, 20, 25, 0.4) 50%,
+      rgba(20, 20, 25, 0.9) 100%);
+}
+
+/* Text Gradient */
+.text-gradient {
+  @apply bg-gradient-to-r from-gold via-cream to-gold bg-clip-text text-transparent;
+}
+
+/* Glass Effect */
+.glass {
+  @apply bg-charcoal/80 backdrop-blur-md;
+}
+
+/* Divider */
+.divider {
+  @apply w-full h-px bg-gradient-to-r from-transparent via-slate-medium to-transparent;
+}
+
+/* Container */
+.container-editorial {
+  @apply max-w-7xl mx-auto px-6 md:px-8 lg:px-12;
+}
+
+/* Aspect Ratios */
+.aspect-portrait {
+  aspect-ratio: 3/4;
+}
+
+.aspect-landscape {
+  aspect-ratio: 16/9;
+}
+
+.aspect-square {
+  aspect-ratio: 1/1;
+}
+
+/* Animation Utilities */
+@keyframes fadeInUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+  }
+
+  to {
+    opacity: 1;
+  }
+}
+
+.animate-fade-in-up {
+  animation: fadeInUp 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.animate-fade-in {
+  animation: fadeIn 0.6s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+/* Reduced Motion */
+@media (prefers-reduced-motion: reduce) {
+
+  *,
+  *::before,
+  *::after {
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+    scroll-behavior: auto !important;
+  }
+}
+
+/* Focus Visible */
+:focus-visible {
+  @apply outline-none ring-2 ring-gold ring-offset-2 ring-offset-anthracite;
+}
+
+/* Admin CMS Specific Styles */
+.admin-sidebar {
+  @apply bg-charcoal border-r border-slate-medium min-h-screen w-64;
+}
+
+.admin-header {
+  @apply bg-surface border-b border-slate-medium px-6 py-4;
+}
+
+.admin-content {
+  @apply flex-1 bg-anthracite min-h-screen;
+}
+
+.admin-card {
+  @apply bg-surface rounded-sm border border-slate-medium p-6;
+}
+
+.admin-table {
+  @apply w-full;
+}
+
+.admin-table th {
+  @apply text-left text-sm font-medium text-slate-light uppercase tracking-wider px-4 py-3 border-b border-slate-medium;
+}
+
+.admin-table td {
+  @apply px-4 py-4 text-cream-warm border-b border-slate-medium/50;
+}
+
+.admin-table tr:hover td {
+  @apply bg-surface-elevated;
+}
+
+/* Status Badges */
+.badge {
+  @apply inline-flex items-center px-2.5 py-0.5 text-xs font-medium rounded-sm;
+}
+
+.badge-draft {
+  @apply bg-slate-medium text-cream-warm;
+}
+
+.badge-published {
+  @apply bg-gold/20 text-gold;
+}
+
+.badge-handled {
+  @apply bg-petrol/20 text-petrol;
+}
+
+/* TipTap Editor Styles */
+.tiptap-editor {
+  @apply bg-charcoal border border-slate-medium rounded-sm;
+}
+
+.tiptap-editor .ProseMirror {
+  @apply p-4 min-h-[300px] text-cream-warm focus:outline-none;
+}
+
+.tiptap-editor .ProseMirror h1 {
+  @apply text-3xl mb-4;
+}
+
+.tiptap-editor .ProseMirror h2 {
+  @apply text-2xl mb-3;
+}
+
+.tiptap-editor .ProseMirror h3 {
+  @apply text-xl mb-2;
+}
+
+.tiptap-editor .ProseMirror p {
+  @apply mb-4;
+}
+
+.tiptap-editor .ProseMirror ul {
+  @apply list-disc ml-6 mb-4;
+}
+
+.tiptap-editor .ProseMirror ol {
+  @apply list-decimal ml-6 mb-4;
+}
+
+.tiptap-editor .ProseMirror blockquote {
+  @apply border-l-4 border-gold pl-4 italic text-slate-light;
+}
+
+.tiptap-editor .ProseMirror a {
+  @apply text-gold underline;
+}
+
+.tiptap-toolbar {
+  @apply flex flex-wrap gap-1 p-2 border-b border-slate-medium bg-surface-elevated;
+}
+
+.tiptap-toolbar button {
+  @apply p-2 rounded-sm text-cream-warm hover:bg-slate-medium hover:text-gold transition-colors duration-200;
+}
+
+.tiptap-toolbar button.is-active {
+  @apply bg-gold/20 text-gold;
+}
+
+/* Circular Carousel Styles */
+.circular-carousel {
+  @apply relative overflow-hidden;
+}
+
+.circular-carousel-track {
+  @apply flex items-center gap-8;
+  animation: carouselScroll 60s linear infinite;
+}
+
+.circular-carousel-track:hover {
+  animation-play-state: paused;
+}
+
+@keyframes carouselScroll {
+  0% {
+    transform: translateX(0);
+  }
+
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.circular-carousel-item {
+  @apply relative flex-shrink-0 overflow-hidden rounded-full;
+  width: 280px;
+  height: 280px;
+  transition: transform 0.5s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.circular-carousel-item:hover {
+  transform: scale(1.05);
+}
+
+@media (min-width: 768px) {
+  .circular-carousel-item {
+    width: 360px;
+    height: 360px;
+  }
+}
+
+@media (min-width: 1024px) {
+  .circular-carousel-item {
+    width: 420px;
+    height: 420px;
+  }
+}
+
+/* Gallery Grid */
+.gallery-grid {
+  @apply grid gap-4 md:gap-6;
+  grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+}
+
+.gallery-item {
+  @apply relative overflow-hidden bg-surface;
+  aspect-ratio: 4/5;
+}
+
+.gallery-item img {
+  @apply w-full h-full object-cover transition-transform duration-700;
+}
+
+.gallery-item:hover img {
+  transform: scale(1.05);
+}
+
+/* Loading States */
+.skeleton {
+  @apply bg-slate-medium animate-pulse rounded-sm;
+}
+
+/* Toast Notifications */
+.toast {
+  @apply fixed bottom-6 right-6 bg-surface border border-slate-medium px-6 py-4 rounded-sm shadow-2xl z-50;
+  animation: slideInRight 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(100%);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+/* Modal Overlay */
+.modal-overlay {
+  @apply fixed inset-0 bg-anthracite/90 backdrop-blur-sm z-50 flex items-center justify-center;
+}
+
+.modal-content {
+  @apply bg-surface border border-slate-medium rounded-sm shadow-2xl max-w-2xl w-full mx-4 max-h-[90vh] overflow-y-auto;
+}
+
+/* Image Upload Drop Zone */
+.dropzone {
+  @apply border-2 border-dashed border-slate-medium rounded-sm p-8 text-center transition-colors duration-300;
+  position: relative;
+  overflow: hidden;
+}
+
+.dropzone:hover,
+.dropzone.active {
+  @apply border-gold bg-gold/5;
+}
+
+.dropzone.active {
+  @apply border-gold;
+}
+
+/* ========================================
+   LOGO ANIMATIONS
+   ======================================== */
+
+/* Subtle breathing/zoom animation for logo */
+@keyframes logo-breathe {
+
+  0%,
+  100% {
+    transform: scale(1);
+  }
+
+  50% {
+    transform: scale(1.03);
+  }
+}
+
+.animate-logo-breathe {
+  animation: logo-breathe 8s ease-in-out infinite;
+}
+
+/* Pulse glow effect */
+@keyframes logo-pulse {
+
+  0%,
+  100% {
+    opacity: 0.3;
+    transform: scale(0.95);
+  }
+
+  50% {
+    opacity: 0.6;
+    transform: scale(1.1);
+  }
+}
+
+.animate-logo-pulse {
+  animation: logo-pulse 4s ease-in-out infinite;
+}
+
+/* Fade in from top animation for nav items */
+@keyframes fadeInDown {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* ========================================
+   LATEX BACKGROUND ANIMATIONS
+   Luxurious, dynamic liquid latex effect
+   ======================================== */
+
+/* Latex blob base styling */
+.latex-blob {
+  position: absolute;
+  border-radius: 50%;
+  filter: blur(80px);
+  opacity: 0.5;
+  mix-blend-mode: screen;
+}
+
+/* Individual blob styles and animations */
+.latex-blob-1 {
+  width: 600px;
+  height: 600px;
+  background: radial-gradient(circle at 30% 30%,
+      oklch(0.35 0.08 270) 0%,
+      oklch(0.20 0.04 270) 50%,
+      transparent 70%);
+  top: -20%;
+  left: -10%;
+  animation: latex-morph-1 25s ease-in-out infinite;
+}
+
+.latex-blob-2 {
+  width: 500px;
+  height: 500px;
+  background: radial-gradient(circle at 70% 30%,
+      oklch(0.30 0.12 15) 0%,
+      oklch(0.20 0.06 15) 50%,
+      transparent 70%);
+  top: 10%;
+  right: -15%;
+  animation: latex-morph-2 30s ease-in-out infinite;
+  animation-delay: -5s;
+}
+
+.latex-blob-3 {
+  width: 700px;
+  height: 700px;
+  background: radial-gradient(circle at 50% 50%,
+      oklch(0.25 0.06 220) 0%,
+      oklch(0.15 0.03 220) 50%,
+      transparent 70%);
+  bottom: -25%;
+  left: 30%;
+  animation: latex-morph-3 35s ease-in-out infinite;
+  animation-delay: -10s;
+}
+
+.latex-blob-4 {
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle at 40% 60%,
+      oklch(0.40 0.10 75) 0%,
+      oklch(0.25 0.05 75) 50%,
+      transparent 70%);
+  top: 40%;
+  left: -5%;
+  animation: latex-morph-4 28s ease-in-out infinite;
+  animation-delay: -15s;
+  opacity: 0.3;
+}
+
+.latex-blob-5 {
+  width: 450px;
+  height: 450px;
+  background: radial-gradient(circle at 60% 40%,
+      oklch(0.28 0.08 270) 0%,
+      oklch(0.18 0.04 270) 50%,
+      transparent 70%);
+  bottom: 10%;
+  right: -10%;
+  animation: latex-morph-5 32s ease-in-out infinite;
+  animation-delay: -20s;
+  opacity: 0.4;
+}
+
+/* Keyframe animations for morphing blobs */
+@keyframes latex-morph-1 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    border-radius: 50%;
+  }
+
+  25% {
+    transform: translate(80px, 50px) scale(1.1) rotate(10deg);
+    border-radius: 45% 55% 50% 50%;
+  }
+
+  50% {
+    transform: translate(40px, 100px) scale(0.95) rotate(-5deg);
+    border-radius: 55% 45% 55% 45%;
+  }
+
+  75% {
+    transform: translate(-30px, 60px) scale(1.05) rotate(5deg);
+    border-radius: 48% 52% 45% 55%;
+  }
+}
+
+@keyframes latex-morph-2 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    border-radius: 50%;
+  }
+
+  25% {
+    transform: translate(-60px, 40px) scale(1.15) rotate(-8deg);
+    border-radius: 55% 45% 48% 52%;
+  }
+
+  50% {
+    transform: translate(-100px, -30px) scale(0.9) rotate(12deg);
+    border-radius: 45% 55% 52% 48%;
+  }
+
+  75% {
+    transform: translate(-40px, -60px) scale(1.08) rotate(-4deg);
+    border-radius: 52% 48% 55% 45%;
+  }
+}
+
+@keyframes latex-morph-3 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    border-radius: 50%;
+  }
+
+  25% {
+    transform: translate(-50px, -80px) scale(1.12) rotate(6deg);
+    border-radius: 48% 52% 45% 55%;
+  }
+
+  50% {
+    transform: translate(60px, -40px) scale(0.92) rotate(-10deg);
+    border-radius: 52% 48% 55% 45%;
+  }
+
+  75% {
+    transform: translate(30px, -100px) scale(1.05) rotate(3deg);
+    border-radius: 55% 45% 50% 50%;
+  }
+}
+
+@keyframes latex-morph-4 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    border-radius: 50%;
+  }
+
+  25% {
+    transform: translate(70px, -40px) scale(1.2) rotate(-6deg);
+    border-radius: 45% 55% 52% 48%;
+  }
+
+  50% {
+    transform: translate(120px, 30px) scale(0.88) rotate(8deg);
+    border-radius: 55% 45% 48% 52%;
+  }
+
+  75% {
+    transform: translate(50px, 70px) scale(1.1) rotate(-3deg);
+    border-radius: 50% 50% 55% 45%;
+  }
+}
+
+@keyframes latex-morph-5 {
+
+  0%,
+  100% {
+    transform: translate(0, 0) scale(1) rotate(0deg);
+    border-radius: 50%;
+  }
+
+  25% {
+    transform: translate(-80px, 60px) scale(1.08) rotate(7deg);
+    border-radius: 52% 48% 45% 55%;
+  }
+
+  50% {
+    transform: translate(-40px, 100px) scale(0.95) rotate(-9deg);
+    border-radius: 48% 52% 55% 45%;
+  }
+
+  75% {
+    transform: translate(-100px, 40px) scale(1.15) rotate(4deg);
+    border-radius: 45% 55% 50% 50%;
+  }
+}
+
+/* Reduce motion for accessibility */
+@media (prefers-reduced-motion: reduce) {
+
+  .latex-blob,
+  .headline-shimmer {
+    animation: none;
+  }
+}
+
+/* ========================================
+   HEADLINE TEXT SHIMMER ANIMATION
+   Subtle luxurious text glow effect
+   ======================================== */
+
+.headline-shimmer {
+  position: relative;
+  background: linear-gradient(90deg,
+      oklch(0.95 0.01 90) 0%,
+      oklch(0.95 0.01 90) 40%,
+      oklch(0.75 0.12 75) 50%,
+      oklch(0.95 0.01 90) 60%,
+      oklch(0.95 0.01 90) 100%);
+  background-size: 200% 100%;
+  -webkit-background-clip: text;
+  background-clip: text;
+  color: transparent;
+  animation: headline-shimmer-sweep 6s ease-in-out infinite;
+  animation-delay: 1s;
+}
+
+@keyframes headline-shimmer-sweep {
+  0% {
+    background-position: 200% 0;
+  }
+
+  50% {
+    background-position: -200% 0;
+  }
+
+  100% {
+    background-position: 200% 0;
+  }
+}

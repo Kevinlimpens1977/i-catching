@@ -1,0 +1,36 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper function to check if user is authenticated
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // All files are publicly readable (images need to display on website)
+    match /{allPaths=**} {
+      allow read: if true;
+    }
+    
+    // Only authenticated users can upload (admin check happens server-side)
+    match /hero/{fileName} {
+      allow write: if isAuthenticated();
+    }
+    
+    match /atelier/{fileName} {
+      allow write: if isAuthenticated();
+    }
+    
+    match /gallery/{fileName} {
+      allow write: if isAuthenticated();
+    }
+    
+    match /blog/{fileName} {
+      allow write: if isAuthenticated();
+    }
+    
+    match /portraits/{fileName} {
+      allow write: if isAuthenticated();
+    }
+  }
+}
