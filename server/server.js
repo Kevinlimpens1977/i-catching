@@ -1,46 +1,84 @@
 import express from 'express';
 import cors from 'cors';
-import { createRequire } from 'module';
 import admin from 'firebase-admin';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
+import { readFileSync, existsSync } from 'fs';
 
-// Load environment variables from root .env
+// ==============================================================
+// ENVIRONMENT CONFIGURATION
+// ==============================================================
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
+const isProduction = process.env.NODE_ENV === 'production';
+
+// Load environment variables from root .env (development fallback)
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
 const PORT = process.env.PORT || 3001;
 
-// CORS Configuration - Only allow requests from the frontend
-const corsOptions = {
-    origin: ['http://localhost:3000', 'http://localhost:4411', 'http://localhost:5173', 'https://i-catching.nl'],
-    methods: ['GET', 'POST'],
-    credentials: true
-};
+// ==============================================================
+// CORS CONFIGURATION (Development Only)
+// In production, frontend and API are same-origin, no CORS needed
+// ==============================================================
+if (!isProduction) {
+    const corsOptions = {
+        origin: ['http://localhost:3000', 'http://localhost:4411', 'http://localhost:5173'],
+        methods: ['GET', 'POST'],
+        credentials: true
+    };
+    app.use(cors(corsOptions));
+    console.log('🔧 CORS enabled for development');
+}
 
-app.use(cors(corsOptions));
-app.use(express.json({ limit: '10mb' }));
+// Request body parsing with size limit for image payloads
+app.use(express.json({ limit: '15mb' }));
 
-// Initialize Firebase Admin with Service Account for full Firestore access
-import { readFileSync, existsSync } from 'fs';
-
+// ==============================================================
+// FIREBASE ADMIN INITIALIZATION
+// Priority: ENV variable (production) > serviceAccountKey.json (development)
+// ==============================================================
 const serviceAccountPath = path.resolve(__dirname, 'serviceAccountKey.json');
 
 if (!admin.apps.length) {
-    if (existsSync(serviceAccountPath)) {
-        // Production-ready: Use service account key
-        const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
-        admin.initializeApp({
-            credential: admin.credential.cert(serviceAccount),
-            projectId: serviceAccount.project_id
-        });
-        console.log('✅ Firebase Admin initialized with Service Account');
-    } else {
-        // Fallback: Project ID only (limited functionality)
-        console.warn('⚠️  No serviceAccountKey.json found - Firestore access will be limited');
-        console.warn('   Download from: https://console.firebase.google.com/project/i-catching/settings/serviceaccounts/adminsdk');
+    let initialized = false;
+
+    // Route A (Preferred): Firebase credentials from ENV variable
+    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
+        try {
+            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+                projectId: serviceAccount.project_id
+            });
+            console.log('✅ Firebase Admin initialized from FIREBASE_SERVICE_ACCOUNT env');
+            initialized = true;
+        } catch (parseError) {
+            console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT:', parseError.message);
+            console.error('   Ensure the JSON is valid and on a single line');
+        }
+    }
+
+    // Route B (Development fallback): serviceAccountKey.json file
+    if (!initialized && existsSync(serviceAccountPath)) {
+        try {
+            const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+            admin.initializeApp({
+                credential: admin.credential.cert(serviceAccount),
+                projectId: serviceAccount.project_id
+            });
+            console.log('✅ Firebase Admin initialized from serviceAccountKey.json');
+            initialized = true;
+        } catch (fileError) {
+            console.error('❌ Failed to load serviceAccountKey.json:', fileError.message);
+        }
+    }
+
+    // Fallback: Project ID only (limited functionality)
+    if (!initialized) {
+        console.warn('⚠️  Firebase Admin: No valid credentials found');
+        console.warn('   Set FIREBASE_SERVICE_ACCOUNT env or provide serviceAccountKey.json');
         admin.initializeApp({
             projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'i-catching'
         });
@@ -314,11 +352,34 @@ app.post('/api/openrouter/nanobanana', verifyAdmin, async (req, res) => {
 
 // Health check endpoint
 app.get('/api/health', (req, res) => {
-    res.json({ status: 'ok', timestamp: new Date().toISOString() });
+    res.json({
+        status: 'ok',
+        timestamp: new Date().toISOString(),
+        environment: isProduction ? 'production' : 'development'
+    });
 });
+
+// ==============================================================
+// PRODUCTION: Static File Serving + SPA Fallback
+// Route order is CRITICAL: API routes above, static/SPA below
+// ==============================================================
+if (isProduction) {
+    const distPath = path.resolve(__dirname, '../dist');
+
+    // Serve static files from Vite build output
+    app.use(express.static(distPath));
+    console.log(`📁 Static files served from: ${distPath}`);
+
+    // SPA Fallback: All non-API routes return index.html for React Router
+    app.get('*', (req, res) => {
+        res.sendFile(path.resolve(distPath, 'index.html'));
+    });
+    console.log('🔄 SPA fallback enabled for client-side routing');
+}
 
 // Start server
 app.listen(PORT, () => {
     console.log(`🚀 I-Catching API server running on port ${PORT}`);
+    console.log(`   Mode: ${isProduction ? 'PRODUCTION' : 'DEVELOPMENT'}`);
     console.log(`   OpenRouter model: ${process.env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-exp:free'}`);
 });
