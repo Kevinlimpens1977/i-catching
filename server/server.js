@@ -4,7 +4,6 @@ import admin from 'firebase-admin';
 import dotenv from 'dotenv';
 import path from 'path';
 import { fileURLToPath } from 'url';
-import { readFileSync, existsSync } from 'fs';
 
 // ==============================================================
 // ENVIRONMENT CONFIGURATION
@@ -12,7 +11,7 @@ import { readFileSync, existsSync } from 'fs';
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const isProduction = process.env.NODE_ENV === 'production';
 
-// Load environment variables from root .env (development fallback)
+// Load environment variables from root .env
 dotenv.config({ path: path.resolve(__dirname, '../.env') });
 
 const app = express();
@@ -36,53 +35,30 @@ if (!isProduction) {
 app.use(express.json({ limit: '15mb' }));
 
 // ==============================================================
-// FIREBASE ADMIN INITIALIZATION
-// Priority: ENV variable (production) > serviceAccountKey.json (development)
+// FIREBASE ADMIN INITIALIZATION (ENV-ONLY, FAIL-FAST)
+// Server will NOT start without valid FIREBASE_SERVICE_ACCOUNT
 // ==============================================================
-const serviceAccountPath = path.resolve(__dirname, 'serviceAccountKey.json');
+if (!process.env.FIREBASE_SERVICE_ACCOUNT) {
+    console.error('❌ FATAL: FIREBASE_SERVICE_ACCOUNT environment variable is not set');
+    console.error('   Server cannot start without Firebase credentials');
+    process.exit(1);
+}
+
+let serviceAccount;
+try {
+    serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
+} catch (parseError) {
+    console.error('❌ FATAL: Failed to parse FIREBASE_SERVICE_ACCOUNT:', parseError.message);
+    console.error('   Ensure the JSON is valid and on a single line');
+    process.exit(1);
+}
 
 if (!admin.apps.length) {
-    let initialized = false;
-
-    // Route A (Preferred): Firebase credentials from ENV variable
-    if (process.env.FIREBASE_SERVICE_ACCOUNT) {
-        try {
-            const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount),
-                projectId: serviceAccount.project_id
-            });
-            console.log('✅ Firebase Admin initialized from FIREBASE_SERVICE_ACCOUNT env');
-            initialized = true;
-        } catch (parseError) {
-            console.error('❌ Failed to parse FIREBASE_SERVICE_ACCOUNT:', parseError.message);
-            console.error('   Ensure the JSON is valid and on a single line');
-        }
-    }
-
-    // Route B (Development fallback): serviceAccountKey.json file
-    if (!initialized && existsSync(serviceAccountPath)) {
-        try {
-            const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
-            admin.initializeApp({
-                credential: admin.credential.cert(serviceAccount),
-                projectId: serviceAccount.project_id
-            });
-            console.log('✅ Firebase Admin initialized from serviceAccountKey.json');
-            initialized = true;
-        } catch (fileError) {
-            console.error('❌ Failed to load serviceAccountKey.json:', fileError.message);
-        }
-    }
-
-    // Fallback: Project ID only (limited functionality)
-    if (!initialized) {
-        console.warn('⚠️  Firebase Admin: No valid credentials found');
-        console.warn('   Set FIREBASE_SERVICE_ACCOUNT env or provide serviceAccountKey.json');
-        admin.initializeApp({
-            projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'i-catching'
-        });
-    }
+    admin.initializeApp({
+        credential: admin.credential.cert(serviceAccount),
+        projectId: serviceAccount.project_id
+    });
+    console.log('✅ Firebase Admin initialized via ENV');
 }
 
 // Middleware to verify Firebase Auth token

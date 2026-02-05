@@ -8,6 +8,7 @@ import { Button } from '@/components/ui/Button';
 import { TextArea } from '@/components/ui/Input';
 import { LoadingSpinner } from '@/components/ui/Loading';
 import { Wand2, Check, X, ArrowLeft, ArrowRight, Image as ImageIcon, AlertCircle } from 'lucide-react';
+import { NANO_BANANA_URL } from '@/lib/api';
 import type { GalleryItem, ImageVersion } from '@/lib/types';
 
 // ===========================================
@@ -108,7 +109,7 @@ function PrePersistEditor({ isOpen, localBlob, onClose, onConfirm }: PrePersistE
             const token = await user?.getIdToken();
 
             // Call our secure backend proxy
-            const apiResponse = await fetch('/api/openrouter/nanobanana', {
+            const apiResponse = await fetch(NANO_BANANA_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
@@ -325,7 +326,7 @@ function PostHocEditor({ isOpen, onClose, categoryId, item }: PostHocEditorProps
             const token = await user?.getIdToken();
 
             // Call our secure backend proxy
-            const response = await fetch('/api/openrouter/nanobanana', {
+            const response = await fetch(NANO_BANANA_URL, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
