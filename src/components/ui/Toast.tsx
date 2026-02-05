@@ -7,26 +7,29 @@ export function ToastContainer() {
     if (toasts.length === 0) return null;
 
     return (
-        <div className="fixed bottom-6 right-6 z-50 flex flex-col gap-3">
+        <div className="toast-container">
             {toasts.map((toast) => (
                 <div
                     key={toast.id}
                     className={`
-            toast flex items-center gap-3 pr-10
-            ${toast.type === 'success' ? 'border-l-4 border-l-green-500' : ''}
-            ${toast.type === 'error' ? 'border-l-4 border-l-red-500' : ''}
-            ${toast.type === 'info' ? 'border-l-4 border-l-petrol' : ''}
-          `}
+                        toast flex items-center gap-3 pr-10 
+                        ${toast.type === 'success' ? 'toast--success' : ''}
+                        ${toast.type === 'error' ? 'toast--error' : ''}
+                        ${toast.type === 'info' ? 'toast--info' : ''}
+                    `}
+                    role="status"
+                    aria-live="polite"
                 >
-                    {toast.type === 'success' && <CheckCircle className="w-5 h-5 text-green-500" />}
-                    {toast.type === 'error' && <AlertCircle className="w-5 h-5 text-red-500" />}
-                    {toast.type === 'info' && <Info className="w-5 h-5 text-petrol" />}
-                    <span className="text-cream-warm">{toast.message}</span>
+                    {toast.type === 'success' && <CheckCircle className="w-4 h-4 text-green-400 flex-shrink-0" />}
+                    {toast.type === 'error' && <AlertCircle className="w-4 h-4 text-red-400 flex-shrink-0" />}
+                    {toast.type === 'info' && <Info className="w-4 h-4 text-petrol flex-shrink-0" />}
+                    <span className="text-sm text-cream-warm">{toast.message}</span>
                     <button
                         onClick={() => removeToast(toast.id)}
-                        className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-light hover:text-cream transition-colors"
+                        className="absolute right-2 top-1/2 -translate-y-1/2 text-slate-light hover:text-cream transition-colors p-1"
+                        aria-label="Sluiten"
                     >
-                        <X className="w-4 h-4" />
+                        <X className="w-3.5 h-3.5" />
                     </button>
                 </div>
             ))}

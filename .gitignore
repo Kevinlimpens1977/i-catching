@@ -31,6 +31,8 @@ dist-ssr
 # Firebase
 .firebase/
 *.cache
+serviceAccountKey.json
+**/serviceAccountKey.json
 
 # Vercel
 .vercel

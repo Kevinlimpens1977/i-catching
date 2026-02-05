@@ -1,0 +1,26 @@
+[
+    {
+        "origin": [
+            "http://localhost:3000",
+            "http://localhost:4411",
+            "http://localhost:5173",
+            "https://i-catching.nl",
+            "https://www.i-catching.nl"
+        ],
+        "method": [
+            "GET",
+            "POST",
+            "PUT",
+            "DELETE",
+            "HEAD"
+        ],
+        "maxAgeSeconds": 3600,
+        "responseHeader": [
+            "Content-Type",
+            "Authorization",
+            "Content-Length",
+            "User-Agent",
+            "x-goog-resumable"
+        ]
+    }
+]

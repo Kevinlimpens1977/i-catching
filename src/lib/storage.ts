@@ -1,5 +1,7 @@
-import { ref, uploadBytes, getDownloadURL, deleteObject } from 'firebase/storage';
+import { ref, uploadBytes, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
 import { storage } from '@/lib/firebase';
+
+export type UploadProgressCallback = (progress: number) => void;
 
 /**
  * Upload a file to Firebase Storage
@@ -39,6 +41,43 @@ export async function uploadBase64Image(
     const snapshot = await uploadBytes(storageRef, blob);
     const downloadUrl = await getDownloadURL(snapshot.ref);
     return downloadUrl;
+}
+
+/**
+ * Upload a Blob to Firebase Storage with progress tracking.
+ * Used by useImagePipeline for pre-confirmation uploads.
+ */
+export async function uploadBlob(
+    blob: Blob,
+    path: string,
+    onProgress?: UploadProgressCallback
+): Promise<string> {
+    const storageRef = ref(storage, path);
+
+    // Use resumable upload for progress tracking
+    const uploadTask = uploadBytesResumable(storageRef, blob);
+
+    return new Promise((resolve, reject) => {
+        uploadTask.on(
+            'state_changed',
+            (snapshot) => {
+                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                onProgress?.(Math.round(progress));
+            },
+            (error) => {
+                console.error('Upload error:', error);
+                reject(error);
+            },
+            async () => {
+                try {
+                    const downloadUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                    resolve(downloadUrl);
+                } catch (error) {
+                    reject(error);
+                }
+            }
+        );
+    });
 }
 
 /**

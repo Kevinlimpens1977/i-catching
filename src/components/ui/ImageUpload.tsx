@@ -5,6 +5,8 @@ interface ImageUploadProps {
     value?: string;
     onChange: (file: File | null) => void;
     onRemove?: () => void;
+    /** NEW: If provided, opens editor with ObjectURL instead of passing file directly */
+    onOpenEditor?: (blobUrl: string, file: File) => void;
     label?: string;
     accept?: string;
     className?: string;
@@ -14,6 +16,7 @@ export function ImageUpload({
     value,
     onChange,
     onRemove,
+    onOpenEditor,
     label,
     accept = 'image/*',
     className = ''
@@ -31,6 +34,22 @@ export function ImageUpload({
         }
     }, []);
 
+    const processFile = useCallback((file: File) => {
+        const objectUrl = URL.createObjectURL(file);
+
+        // If onOpenEditor is provided, trigger the editor flow
+        // NO Firebase upload happens here
+        if (onOpenEditor) {
+            onOpenEditor(objectUrl, file);
+            // Don't set preview - editor will handle display
+            return;
+        }
+
+        // Backward compatibility: original behavior
+        setPreview(objectUrl);
+        onChange(file);
+    }, [onChange, onOpenEditor]);
+
     const handleDrop = useCallback((e: React.DragEvent) => {
         e.preventDefault();
         e.stopPropagation();
@@ -38,20 +57,24 @@ export function ImageUpload({
 
         const file = e.dataTransfer.files?.[0];
         if (file && file.type.startsWith('image/')) {
-            setPreview(URL.createObjectURL(file));
-            onChange(file);
+            processFile(file);
         }
-    }, [onChange]);
+    }, [processFile]);
 
     const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0];
         if (file) {
-            setPreview(URL.createObjectURL(file));
-            onChange(file);
+            processFile(file);
         }
+        // Reset input value to allow re-selecting the same file
+        e.target.value = '';
     };
 
     const handleRemove = () => {
+        // Revoke ObjectURL if it's a blob URL
+        if (preview && preview.startsWith('blob:')) {
+            URL.revokeObjectURL(preview);
+        }
         setPreview(null);
         onChange(null);
         onRemove?.();
@@ -102,6 +125,7 @@ export function ImageUpload({
 }
 
 interface ImageGalleryUploadProps {
+    /** Called with files when user selects images (for immediate NanoBanana gate) */
     onUpload: (files: File[]) => void;
     multiple?: boolean;
 }
@@ -135,6 +159,8 @@ export function ImageGalleryUpload({ onUpload, multiple = true }: ImageGalleryUp
         if (files.length > 0) {
             onUpload(multiple ? files : [files[0]]);
         }
+        // Reset input value to allow re-selecting the same file
+        e.target.value = '';
     };
 
     return (

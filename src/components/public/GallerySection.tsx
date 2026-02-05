@@ -8,10 +8,13 @@ interface GallerySectionProps {
 }
 
 export function GallerySection({ categories, galleryItems }: GallerySectionProps) {
+    // Filter out Latex Couture - it has its own dedicated section
+    const filteredCategories = categories.filter(cat => !cat.isLatexCouture);
+
     return (
         <section className="section bg-anthracite">
             <div className="container-editorial">
-                {categories.map((category) => {
+                {filteredCategories.map((category) => {
                     const items = galleryItems.get(category.id) || [];
                     if (items.length === 0) return null;
 

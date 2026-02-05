@@ -1,14 +1,14 @@
-import { useState } from 'react';
+import { useState, useCallback, useRef, useEffect } from 'react';
 import { useCategories, useGalleryItems, createCategory, updateCategory, deleteCategory, addGalleryItem, updateGalleryItem, deleteGalleryItem } from '@/hooks/useFirestore';
-import { uploadImage, generateImagePath } from '@/lib/storage';
+import { uploadImage, uploadBlob, generateImagePath } from '@/lib/storage';
 import { useToast } from '@/context/ToastContext';
 import { Button } from '@/components/ui/Button';
 import { Input, TextArea } from '@/components/ui/Input';
 import { ImageUpload, ImageGalleryUpload } from '@/components/ui/ImageUpload';
 import { Modal, ConfirmModal } from '@/components/ui/Modal';
-import { SectionLoader } from '@/components/ui/Loading';
+import { SectionLoader, LoadingSpinner } from '@/components/ui/Loading';
 import { AIImageEditor } from '@/components/admin/AIImageEditor';
-import { Plus, Settings, Trash2, GripVertical, Wand2 } from 'lucide-react';
+import { Plus, Settings, Trash2, Wand2 } from 'lucide-react';
 import type { Category, GalleryItem, ImageVersion } from '@/lib/types';
 
 export function GalleriesPage() {
@@ -18,6 +18,8 @@ export function GalleriesPage() {
     const [categoryModal, setCategoryModal] = useState(false);
     const [editingCategory, setEditingCategory] = useState<Category | null>(null);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
+
+    // POST-HOC AI Editor (for existing items)
     const [aiEditorItem, setAiEditorItem] = useState<{ categoryId: string; item: GalleryItem } | null>(null);
 
     if (loading) return <SectionLoader />;
@@ -53,10 +55,18 @@ export function GalleriesPage() {
                                 <h2 className="text-lg font-medium text-cream mb-4">Categorieën</h2>
                                 <div className="space-y-2">
                                     {categories.map((category) => (
-                                        <button
+                                        <div
                                             key={category.id}
+                                            role="button"
+                                            tabIndex={0}
                                             onClick={() => setSelectedCategory(category)}
-                                            className={`w-full text-left p-3 rounded-sm transition-colors ${selectedCategory?.id === category.id
+                                            onKeyDown={(e) => {
+                                                if (e.key === 'Enter' || e.key === ' ') {
+                                                    e.preventDefault();
+                                                    setSelectedCategory(category);
+                                                }
+                                            }}
+                                            className={`w-full text-left p-3 rounded-sm transition-colors cursor-pointer ${selectedCategory?.id === category.id
                                                 ? 'bg-gold/10 border border-gold'
                                                 : 'bg-surface-elevated hover:bg-slate-medium border border-transparent'
                                                 }`}
@@ -75,11 +85,12 @@ export function GalleriesPage() {
                                                         setCategoryModal(true);
                                                     }}
                                                     className="p-1 text-slate-light hover:text-cream"
+                                                    aria-label={`Instellingen voor ${category.title}`}
                                                 >
                                                     <Settings className="w-4 h-4" />
                                                 </button>
                                             </div>
-                                        </button>
+                                        </div>
                                     ))}
                                 </div>
                             </div>
@@ -133,9 +144,10 @@ export function GalleriesPage() {
                 confirmText="Verwijderen"
             />
 
-            {/* AI Image Editor Modal */}
+            {/* POST-HOC AI Image Editor Modal (for existing items) */}
             {aiEditorItem && (
                 <AIImageEditor
+                    mode="post-hoc"
                     isOpen={true}
                     onClose={() => setAiEditorItem(null)}
                     categoryId={aiEditorItem.categoryId}
@@ -166,7 +178,7 @@ function CategoryModal({
     const [coverFile, setCoverFile] = useState<File | null>(null);
 
     // Update state when category changes
-    useState(() => {
+    useEffect(() => {
         if (category) {
             setTitle(category.title);
             setIntro(category.intro);
@@ -176,7 +188,8 @@ function CategoryModal({
             setIntro('');
             setIsLatexCouture(false);
         }
-    });
+        setCoverFile(null);
+    }, [category, isOpen]);
 
     const handleSave = async () => {
         if (!title.trim()) {
@@ -276,7 +289,15 @@ function CategoryModal({
     );
 }
 
-// Gallery Items Panel Component
+// ===========================================
+// GALLERY ITEMS PANEL - With NanoBanana Gate
+// ===========================================
+
+interface PendingFile {
+    file: File;
+    objectUrl: string;
+}
+
 function GalleryItemsPanel({
     category,
     onOpenAIEditor
@@ -286,39 +307,110 @@ function GalleryItemsPanel({
 }) {
     const { items, loading } = useGalleryItems(category.id);
     const { showToast } = useToast();
-    const [uploading, setUploading] = useState(false);
     const [deleteConfirm, setDeleteConfirm] = useState<string | null>(null);
 
-    const handleUpload = async (files: File[]) => {
-        setUploading(true);
-        try {
-            for (const file of files) {
-                const path = generateImagePath('gallery', file.name);
-                const imageUrl = await uploadImage(file, path);
+    // NEW: Pre-persist NanoBanana gate state
+    const [pendingFiles, setPendingFiles] = useState<PendingFile[]>([]);
+    const [currentEditIndex, setCurrentEditIndex] = useState(0);
+    const [isEditorOpen, setIsEditorOpen] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
+    const [uploadProgress, setUploadProgress] = useState(0);
 
-                const versionId = Date.now().toString();
-                await addGalleryItem(category.id, {
-                    categoryId: category.id,
-                    imageUrl,
-                    imageVersions: [{
-                        id: versionId,
-                        url: imageUrl,
-                        isActive: true,
-                        isOriginal: true,
-                        createdAt: new Date()
-                    }],
-                    activeVersionId: versionId,
-                    order: items.length + 1
-                });
+    // Current file being edited
+    const currentPending = pendingFiles[currentEditIndex];
+
+    // Cleanup ObjectURLs on unmount or when files change
+    useEffect(() => {
+        return () => {
+            pendingFiles.forEach(pf => {
+                try { URL.revokeObjectURL(pf.objectUrl); } catch (e) { /* ignore */ }
+            });
+        };
+    }, [pendingFiles]);
+
+    // Handle file selection - opens NanoBanana immediately
+    const handleFilesSelected = useCallback((files: File[]) => {
+        // Create ObjectURLs for all files
+        const pending: PendingFile[] = files.map(file => ({
+            file,
+            objectUrl: URL.createObjectURL(file)
+        }));
+
+        setPendingFiles(pending);
+        setCurrentEditIndex(0);
+        setIsEditorOpen(true);
+    }, []);
+
+    // Handle editor confirm - upload and save
+    const handleEditorConfirm = useCallback(async (result: { mode: 'original' | 'ai'; blob: Blob }) => {
+        if (!currentPending) return;
+
+        setIsUploading(true);
+        setUploadProgress(0);
+
+        try {
+            // Generate path and upload
+            const fileName = currentPending.file.name;
+            const path = generateImagePath('gallery', fileName);
+
+            const imageUrl = await uploadBlob(result.blob, path, (progress) => {
+                setUploadProgress(progress);
+            });
+
+            // Create Firestore item
+            const versionId = Date.now().toString();
+            await addGalleryItem(category.id, {
+                categoryId: category.id,
+                imageUrl,
+                imageVersions: [{
+                    id: versionId,
+                    url: imageUrl,
+                    isActive: true,
+                    isOriginal: result.mode === 'original',
+                    createdAt: new Date()
+                }],
+                activeVersionId: versionId,
+                order: items.length + currentEditIndex + 1
+            });
+
+            showToast('Afbeelding opgeslagen!', 'success');
+
+            // Revoke the ObjectURL
+            URL.revokeObjectURL(currentPending.objectUrl);
+
+            // Move to next file or close
+            if (currentEditIndex < pendingFiles.length - 1) {
+                setCurrentEditIndex(prev => prev + 1);
+                setIsUploading(false);
+                setUploadProgress(0);
+            } else {
+                // All files processed
+                setPendingFiles([]);
+                setCurrentEditIndex(0);
+                setIsEditorOpen(false);
+                setIsUploading(false);
+                setUploadProgress(0);
             }
-            showToast(`${files.length} afbeelding(en) geüpload`, 'success');
         } catch (error) {
             console.error('Upload error:', error);
-            showToast('Upload mislukt', 'error');
-        } finally {
-            setUploading(false);
+            showToast('Upload mislukt. Probeer het opnieuw.', 'error');
+            setIsUploading(false);
         }
-    };
+    }, [currentPending, currentEditIndex, pendingFiles.length, category.id, items.length, showToast]);
+
+    // Handle editor cancel
+    const handleEditorClose = useCallback(() => {
+        // Revoke all pending ObjectURLs
+        pendingFiles.forEach(pf => {
+            try { URL.revokeObjectURL(pf.objectUrl); } catch (e) { /* ignore */ }
+        });
+
+        setPendingFiles([]);
+        setCurrentEditIndex(0);
+        setIsEditorOpen(false);
+        setIsUploading(false);
+        setUploadProgress(0);
+    }, [pendingFiles]);
 
     const handleDelete = async (itemId: string) => {
         try {
@@ -353,10 +445,9 @@ function GalleryItemsPanel({
                 <span className="text-slate-light text-sm">{items.length} afbeeldingen</span>
             </div>
 
-            {/* Upload Zone */}
+            {/* Upload Zone - Triggers NanoBanana Gate */}
             <div className="mb-6">
-                <ImageGalleryUpload onUpload={handleUpload} />
-                {uploading && <p className="text-gold text-sm mt-2">Uploaden...</p>}
+                <ImageGalleryUpload onUpload={handleFilesSelected} />
                 {category.isLatexCouture && items.length >= 6 && (
                     <p className="text-amber-400 text-xs mt-2">
                         ⚠️ De circulaire gallerij toont maximaal 6 afbeeldingen. Nieuwe afbeeldingen worden opgeslagen maar niet getoond.
@@ -437,6 +528,41 @@ function GalleryItemsPanel({
                 message="Deze actie kan niet ongedaan worden gemaakt."
                 confirmText="Verwijderen"
             />
+
+            {/* PRE-PERSIST AI Image Editor Modal */}
+            {isEditorOpen && currentPending && (
+                <>
+                    <AIImageEditor
+                        mode="pre-persist"
+                        isOpen={isEditorOpen && !isUploading}
+                        localBlob={currentPending.objectUrl}
+                        onClose={handleEditorClose}
+                        onConfirm={handleEditorConfirm}
+                    />
+
+                    {/* Upload Progress Modal */}
+                    {isUploading && (
+                        <Modal isOpen={true} onClose={() => { }} title="Uploaden..." size="sm">
+                            <div className="text-center py-4">
+                                <LoadingSpinner size="lg" />
+                                <p className="text-cream-warm mt-4">Afbeelding wordt geüpload...</p>
+                                <div className="mt-4 bg-slate-dark rounded-full h-2 overflow-hidden">
+                                    <div
+                                        className="h-full bg-gold transition-all duration-300"
+                                        style={{ width: `${uploadProgress}%` }}
+                                    />
+                                </div>
+                                <p className="text-sm text-slate-light mt-2">{uploadProgress}%</p>
+                                {pendingFiles.length > 1 && (
+                                    <p className="text-xs text-slate-light mt-2">
+                                        Afbeelding {currentEditIndex + 1} van {pendingFiles.length}
+                                    </p>
+                                )}
+                            </div>
+                        </Modal>
+                    )}
+                </>
+            )}
         </div>
     );
 }

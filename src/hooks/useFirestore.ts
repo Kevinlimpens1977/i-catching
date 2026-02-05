@@ -71,6 +71,40 @@ export async function updateSiteContent(
     });
 }
 
+/**
+ * Update a single field in a Firestore document.
+ * Used by useFieldSaver for atomic per-field autosave.
+ */
+export async function updateDocumentField(
+    collectionPath: string,
+    docId: string,
+    fieldName: string,
+    value: unknown
+): Promise<void> {
+    const docRef = doc(db, collectionPath, docId);
+    await updateDoc(docRef, {
+        [fieldName]: value,
+        updatedAt: serverTimestamp()
+    });
+}
+
+/**
+ * Update a single field in the site content document.
+ * Convenience wrapper for updateDocumentField.
+ */
+export async function updateSiteContentField(
+    fieldName: string,
+    value: unknown,
+    userId: string
+): Promise<void> {
+    const docRef = doc(db, 'siteContent', 'main');
+    await updateDoc(docRef, {
+        [fieldName]: value,
+        updatedAt: serverTimestamp(),
+        updatedBy: userId
+    });
+}
+
 // =====================
 // Categories Hooks
 // =====================

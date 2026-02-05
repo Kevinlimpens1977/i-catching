@@ -15,7 +15,7 @@ const PORT = process.env.PORT || 3001;
 
 // CORS Configuration - Only allow requests from the frontend
 const corsOptions = {
-    origin: ['http://localhost:3000', 'http://localhost:5173', 'https://i-catching.nl'],
+    origin: ['http://localhost:3000', 'http://localhost:4411', 'http://localhost:5173', 'https://i-catching.nl'],
     methods: ['GET', 'POST'],
     credentials: true
 };
@@ -23,38 +23,65 @@ const corsOptions = {
 app.use(cors(corsOptions));
 app.use(express.json({ limit: '10mb' }));
 
-// Initialize Firebase Admin (for verifying auth tokens)
-// Note: In production, use a service account key file
+// Initialize Firebase Admin with Service Account for full Firestore access
+import { readFileSync, existsSync } from 'fs';
+
+const serviceAccountPath = path.resolve(__dirname, 'serviceAccountKey.json');
+
 if (!admin.apps.length) {
-    admin.initializeApp({
-        projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'i-catching'
-    });
+    if (existsSync(serviceAccountPath)) {
+        // Production-ready: Use service account key
+        const serviceAccount = JSON.parse(readFileSync(serviceAccountPath, 'utf8'));
+        admin.initializeApp({
+            credential: admin.credential.cert(serviceAccount),
+            projectId: serviceAccount.project_id
+        });
+        console.log('✅ Firebase Admin initialized with Service Account');
+    } else {
+        // Fallback: Project ID only (limited functionality)
+        console.warn('⚠️  No serviceAccountKey.json found - Firestore access will be limited');
+        console.warn('   Download from: https://console.firebase.google.com/project/i-catching/settings/serviceaccounts/adminsdk');
+        admin.initializeApp({
+            projectId: process.env.VITE_FIREBASE_PROJECT_ID || 'i-catching'
+        });
+    }
 }
 
 // Middleware to verify Firebase Auth token
 async function verifyAdmin(req, res, next) {
+    console.log('=== VERIFY ADMIN MIDDLEWARE ===');
+    console.log('Request URL:', req.url);
     const authHeader = req.headers.authorization;
+    console.log('Auth header present:', !!authHeader);
 
     if (!authHeader || !authHeader.startsWith('Bearer ')) {
+        console.error('AUTH FAIL: No authorization token provided');
         return res.status(401).json({ error: 'No authorization token provided' });
     }
 
     const token = authHeader.split('Bearer ')[1];
+    console.log('Token length:', token?.length || 0);
 
     try {
+        console.log('Verifying token with Firebase Admin...');
         const decodedToken = await admin.auth().verifyIdToken(token);
+        console.log('Token verified, UID:', decodedToken.uid);
 
         // Check admin role in Firestore
+        console.log('Checking admin role in Firestore...');
         const userDoc = await admin.firestore().collection('users').doc(decodedToken.uid).get();
 
         if (!userDoc.exists || userDoc.data()?.role !== 'admin') {
+            console.error('AUTH FAIL: User is not admin. Exists:', userDoc.exists, 'Role:', userDoc.data()?.role);
             return res.status(403).json({ error: 'Admin access required' });
         }
 
+        console.log('AUTH SUCCESS: Admin verified');
         req.user = decodedToken;
         next();
     } catch (error) {
-        console.error('Auth verification error:', error);
+        console.error('AUTH EXCEPTION:', error.message);
+        console.error('Full error:', error);
         return res.status(401).json({ error: 'Invalid or expired token' });
     }
 }
@@ -64,7 +91,14 @@ async function verifyAdmin(req, res, next) {
  * 
  * This endpoint securely proxies requests to OpenRouter's image generation API
  * The OpenRouter API key is NEVER exposed to the client
+ * 
+ * Model: google/gemini-2.5-flash-image (hardcoded, image-capable)
+ * Uses response_modalities: ['IMAGE'] to force image output
  */
+
+// Hardcoded image-capable model for Nano Banana
+const NANO_BANANA_MODEL = 'google/gemini-2.5-flash-image';
+
 app.post('/api/openrouter/nanobanana', verifyAdmin, async (req, res) => {
     const { imageUrl, base64Image, prompt } = req.body;
 
@@ -77,7 +111,6 @@ app.post('/api/openrouter/nanobanana', verifyAdmin, async (req, res) => {
     }
 
     const OPENROUTER_API_KEY = process.env.OPENROUTER_API_KEY;
-    const OPENROUTER_MODEL = process.env.OPENROUTER_MODEL || 'google/gemini-2.0-flash-exp:free';
 
     if (!OPENROUTER_API_KEY) {
         console.error('OpenRouter API key not configured');
@@ -85,7 +118,7 @@ app.post('/api/openrouter/nanobanana', verifyAdmin, async (req, res) => {
     }
 
     try {
-        // Prepare the image content
+        // Prepare the image content as base64 data URI
         let imageContent;
 
         if (base64Image) {
@@ -100,19 +133,25 @@ app.post('/api/openrouter/nanobanana', verifyAdmin, async (req, res) => {
             imageContent = `data:${contentType};base64,${base64}`;
         }
 
-        // Call OpenRouter API
-        // Note: The exact API format depends on the model. This is a general structure.
-        // For image editing models, you may need to adjust the request format.
+        // DEBUG: Log before OpenRouter call
+        console.log('=== NANO BANANA DEBUG ===');
+        console.log('Model:', NANO_BANANA_MODEL);
+        console.log('Prompt:', prompt);
+        console.log('Image content length:', imageContent?.length || 0);
+        console.log('Image content prefix:', imageContent?.substring(0, 50) || 'NONE');
+        console.log('Calling OpenRouter API...');
+
+        // Call OpenRouter API with image-capable model and response_modalities
         const openrouterResponse = await fetch('https://openrouter.ai/api/v1/chat/completions', {
             method: 'POST',
             headers: {
                 'Authorization': `Bearer ${OPENROUTER_API_KEY}`,
                 'HTTP-Referer': 'https://i-catching.nl',
-                'X-Title': 'I-Catching CMS',
+                'X-Title': 'I-Catching CMS - Nano Banana',
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify({
-                model: OPENROUTER_MODEL,
+                model: NANO_BANANA_MODEL,
                 messages: [
                     {
                         role: 'user',
@@ -125,64 +164,148 @@ app.post('/api/openrouter/nanobanana', verifyAdmin, async (req, res) => {
                             },
                             {
                                 type: 'text',
-                                text: `Edit this image with the following changes: ${prompt}. Return the modified image.`
+                                text: `Edit this image with the following changes: ${prompt}`
                             }
                         ]
                     }
                 ],
-                max_tokens: 4096
+                extra_body: {
+                    response_modalities: ['IMAGE'],
+                    safetySettings: [
+                        { category: 'HARM_CATEGORY_HARASSMENT', threshold: 'BLOCK_NONE' },
+                        { category: 'HARM_CATEGORY_HATE_SPEECH', threshold: 'BLOCK_NONE' },
+                        { category: 'HARM_CATEGORY_SEXUALLY_EXPLICIT', threshold: 'BLOCK_NONE' },
+                        { category: 'HARM_CATEGORY_DANGEROUS_CONTENT', threshold: 'BLOCK_NONE' }
+                    ]
+                }
             })
         });
 
+        // DEBUG: Log OpenRouter response status
+        console.log('OpenRouter response status:', openrouterResponse.status);
+        console.log('OpenRouter response ok:', openrouterResponse.ok);
+
         if (!openrouterResponse.ok) {
             const errorData = await openrouterResponse.text();
-            console.error('OpenRouter API error:', errorData);
+            console.error('=== OPENROUTER ERROR ===');
+            console.error('Status:', openrouterResponse.status);
+            console.error('Error body:', errorData);
             return res.status(500).json({
+                success: false,
                 error: 'AI generation failed',
                 details: errorData
             });
         }
 
-        const result = await openrouterResponse.json();
+        const data = await openrouterResponse.json();
+        console.log('Nano Banana response received, extracting image...');
 
-        // Extract the generated image from the response
-        // The exact structure depends on the model's response format
+        // =====================================================
+        // ROBUST MULTI-FORMAT IMAGE EXTRACTION (Paco Generator Pattern)
+        // =====================================================
         let generatedImage = null;
 
-        if (result.choices && result.choices[0]) {
-            const content = result.choices[0].message?.content;
+        if (data.choices && data.choices.length > 0) {
+            const message = data.choices[0].message;
 
-            // Check if content is an image (base64 or URL)
-            if (typeof content === 'string') {
-                if (content.startsWith('data:image') || content.startsWith('http')) {
-                    generatedImage = content;
+            // Format 1: OpenAI-style images array
+            if (message.images && message.images.length > 0) {
+                const imageData = message.images[0];
+                console.log('Found image in images array');
+
+                if (imageData.image_url?.url) {
+                    generatedImage = imageData.image_url.url;
+                } else if (imageData.url) {
+                    generatedImage = imageData.url;
                 }
             }
 
-            // Some models return images in a different structure
-            if (result.choices[0].message?.images) {
-                generatedImage = result.choices[0].message.images[0];
+            // Format 2: Google Gemini parts array
+            if (!generatedImage && message.parts && Array.isArray(message.parts)) {
+                for (const part of message.parts) {
+                    // Google inline_data format
+                    const inlineData = part.inline_data || part.inlineData;
+                    if (inlineData && inlineData.data) {
+                        const mimeType = inlineData.mime_type || inlineData.mimeType || 'image/png';
+                        console.log('Found image in parts.inline_data');
+                        generatedImage = `data:${mimeType};base64,${inlineData.data}`;
+                        break;
+                    }
+
+                    // Alternative: base64 directly in part.image
+                    if (part.image) {
+                        console.log('Found image in part.image');
+                        if (typeof part.image === 'string') {
+                            generatedImage = part.image.startsWith('data:')
+                                ? part.image
+                                : `data:image/png;base64,${part.image}`;
+                            break;
+                        }
+                    }
+                }
+            }
+
+            // Format 3: Nested content.parts structure
+            if (!generatedImage && message.content && typeof message.content === 'object' && message.content.parts) {
+                for (const part of message.content.parts) {
+                    const inlineData = part.inline_data || part.inlineData;
+                    if (inlineData && inlineData.data) {
+                        const mimeType = inlineData.mime_type || inlineData.mimeType || 'image/png';
+                        console.log('Found image in content.parts.inline_data');
+                        generatedImage = `data:${mimeType};base64,${inlineData.data}`;
+                        break;
+                    }
+                }
+            }
+
+            // Format 4: Base64 data URI in content string (regex)
+            if (!generatedImage && typeof message.content === 'string') {
+                const base64Match = message.content.match(/data:image\/[^;]+;base64,[A-Za-z0-9+/=]+/);
+                if (base64Match) {
+                    console.log('Found base64 image in content text');
+                    generatedImage = base64Match[0];
+                }
             }
         }
 
+        // Format 5: Google candidates array (native format)
+        if (!generatedImage && data.candidates && data.candidates.length > 0) {
+            const candidate = data.candidates[0];
+            if (candidate.content?.parts) {
+                for (const part of candidate.content.parts) {
+                    const inlineData = part.inline_data || part.inlineData;
+                    if (inlineData && inlineData.data) {
+                        const mimeType = inlineData.mime_type || inlineData.mimeType || 'image/png';
+                        console.log('Found image in candidates.content.parts');
+                        generatedImage = `data:${mimeType};base64,${inlineData.data}`;
+                        break;
+                    }
+                }
+            }
+        }
+
+        // =====================================================
+        // NO-IMAGE FALLBACK (Graceful)
+        // =====================================================
         if (!generatedImage) {
-            // For models that don't support direct image editing,
-            // we return a placeholder or the original with a note
+            console.error('No image found in OpenRouter response. Full response:', JSON.stringify(data, null, 2));
             return res.status(200).json({
                 success: false,
-                message: 'Image generation not available for this model',
-                originalImage: imageUrl || base64Image
+                error: 'Geen afbeelding in response'
             });
         }
 
+        // Success - return the generated image
+        console.log('Nano Banana image generation successful');
         return res.json({
             success: true,
             generatedImage
         });
 
     } catch (error) {
-        console.error('Error processing AI request:', error);
+        console.error('Error processing Nano Banana request:', error);
         return res.status(500).json({
+            success: false,
             error: 'Failed to process AI request',
             details: error.message
         });
