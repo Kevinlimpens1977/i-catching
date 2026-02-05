@@ -371,7 +371,8 @@ if (isProduction) {
     console.log(`📁 Static files served from: ${distPath}`);
 
     // SPA Fallback: All non-API routes return index.html for React Router
-    app.get('*', (req, res) => {
+    // Express 5 requires named splat parameter syntax
+    app.get('/{*splat}', (req, res) => {
         res.sendFile(path.resolve(distPath, 'index.html'));
     });
     console.log('🔄 SPA fallback enabled for client-side routing');
